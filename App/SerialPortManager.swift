@@ -136,8 +136,13 @@ class SerialPortManager: ObservableObject {
         options.c_oflag &= ~tcflag_t(OPOST)
 
         // Set read timeout
-        options.c_cc.16 = 1  // VMIN = 1 (minimum characters)
-        options.c_cc.17 = 10 // VTIME = 1 second timeout
+        // VMIN and VTIME are at indices 16 and 17 in the c_cc tuple
+        withUnsafeMutablePointer(to: &options.c_cc) { ptr in
+            ptr.withMemoryRebound(to: cc_t.self, capacity: Int(NCCS)) { cc in
+                cc[16] = 1   // VMIN = 1 (minimum characters)
+                cc[17] = 10  // VTIME = 1 second timeout (0.1 second units)
+            }
+        }
 
         // Apply settings
         guard tcsetattr(fileDescriptor, TCSANOW, &options) == 0 else {
